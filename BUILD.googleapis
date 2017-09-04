@@ -15,7 +15,7 @@ proto_library(
 )
 
 grpc_cc_library(
-  name = "build_event_service_grpc",
+  name = "build_event_service_grpc_cc_files",
   proto_srcs = [
     "google/devtools/build/v1/build_status.proto",
     "google/devtools/build/v1/build_events.proto",
@@ -23,6 +23,30 @@ grpc_cc_library(
   ],
   srcs = [":build_event_service"],
 )
+
+cc_proto_library(
+  name = "build_event_service_cc",
+  deps = [":build_event_service"]
+)
+
+cc_library(
+  name = "build_event_service_grpc_cc",
+  hdrs = [
+    "google/devtools/build/v1/build_status.grpc.pb.h",
+    "google/devtools/build/v1/build_events.grpc.pb.h",
+    "google/devtools/build/v1/publish_build_event.grpc.pb.h",
+  ],
+  srcs = [
+    "google/devtools/build/v1/build_status.grpc.pb.cc",
+    "google/devtools/build/v1/build_events.grpc.pb.cc",
+    "google/devtools/build/v1/publish_build_event.grpc.pb.cc",
+  ],
+  deps = [
+    ":build_event_service_cc",
+    "@grpc//:grpc++",
+  ]
+)
+
 
 proto_library(
   name = "http",

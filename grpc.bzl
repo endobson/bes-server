@@ -60,6 +60,7 @@ grpc_cc_library = rule(
     "protoc" : attr.label(default="@com_google_protobuf//:protoc", single_file=True),
     "grpc_plugin" : attr.label(default="@grpc//:grpc_cpp_plugin", single_file=True)
   },
+  output_to_genfiles = True,
   outputs = _grpc_cc_library_outputs
 )
 

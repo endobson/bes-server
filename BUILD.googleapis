@@ -44,7 +44,8 @@ cc_library(
   deps = [
     ":build_event_service_cc",
     "@grpc//:grpc++",
-  ]
+  ],
+  visibility = ["//visibility:public"],
 )
 
 

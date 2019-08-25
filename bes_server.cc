@@ -9,6 +9,7 @@
 using google::devtools::build::v1::OrderedBuildEvent;
 using google::devtools::build::v1::PublishBuildEvent;
 using google::devtools::build::v1::PublishBuildToolEventStreamResponse;
+using google::devtools::build::v1::PublishBuildToolEventStreamRequest;
 using google::devtools::build::v1::PublishLifecycleEventRequest;
 
 class PublishBuildEventServiceImpl : public google::devtools::build::v1::PublishBuildEvent::Service {
@@ -24,17 +25,23 @@ class PublishBuildEventServiceImpl : public google::devtools::build::v1::Publish
 
   grpc::Status PublishBuildToolEventStream(
       grpc::ServerContext* context,
-      grpc::ServerReaderWriter<PublishBuildToolEventStreamResponse, OrderedBuildEvent>* stream) override {
-    OrderedBuildEvent event;
-    while (stream->Read(&event)) {
-      // std::cout << "EventStream event:" << std::endl << event.DebugString() << std::endl;
-      //PublishBuildToolEventStreamResponse response;
-      //stream->Write(response);
+      grpc::ServerReaderWriter<PublishBuildToolEventStreamResponse,
+                               PublishBuildToolEventStreamRequest>* stream) override {
+    PublishBuildToolEventStreamRequest request;
+    while (stream->Read(&request)) {
+      const OrderedBuildEvent& event = request.ordered_build_event();
+      std::cout << "EventStream event:" << std::endl << event.DebugString() << std::endl;
+
+      PublishBuildToolEventStreamResponse response;
+      *response.mutable_stream_id() = event.stream_id();
+      response.set_sequence_number(event.sequence_number());
+      stream->Write(response);
     }
 
     return grpc::Status::OK;
   }
 };
+
 
 void RunServer() {
   std::string server_address("0.0.0.0:8089");

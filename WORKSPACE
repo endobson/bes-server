@@ -1,105 +1,27 @@
 workspace(name = "bes_example")
 
-new_http_archive(
-  name = "googleapis",
-  sha256 = "0421e89b76a6fa6f820c39ad365a5e490873ae4c7509c8a53f42671f1e53e1e8",
-  urls = ["https://github.com/googleapis/googleapis/archive/220c359ac969c6bbab7a11077b32de2533cc7bad.tar.gz"],
-  strip_prefix = "googleapis-220c359ac969c6bbab7a11077b32de2533cc7bad",
-  build_file = "BUILD.googleapis",
-  workspace_file = "WORKSPACE.googleapis",
-)
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
+# GRPC
 http_archive(
-  name = "com_google_protobuf",
-  sha256 = "8b3a82704fbf5202c3bcfbbe6b2eb4d07d85bcb507876aaf60edff751c821854",
-  strip_prefix = "protobuf-hack-wkt",
-  urls = ["https://github.com/endobson/protobuf/archive/hack-wkt.tar.gz"]
+  name = "com_github_grpc_grpc",
+  sha256 = "",
+  strip_prefix = "grpc-1.23.0",
+  urls = ["https://github.com/grpc/grpc/archive/v1.23.0.tar.gz"]
 )
 
-http_archive(
-  name = "com_google_protobuf_cc",
-  sha256 = "8b3a82704fbf5202c3bcfbbe6b2eb4d07d85bcb507876aaf60edff751c821854",
-  strip_prefix = "protobuf-hack-wkt",
-  urls = ["https://github.com/endobson/protobuf/archive/hack-wkt.tar.gz"]
-)
+load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps",)
+grpc_deps()
+# Extra libraries needed for grpc
+load("@upb//bazel:workspace_deps.bzl", "upb_deps")
+upb_deps()
+load("@build_bazel_rules_apple//apple:repositories.bzl", "apple_rules_dependencies")
+apple_rules_dependencies()
 
-
-# Bind rules for grpc
-bind(
-    name = "protobuf",
-    actual = "@com_google_protobuf//:protobuf",
-)
-
-bind(
-    name = "protobuf_clib",
-    actual = "@com_google_protobuf//:protoc_lib",
-)
-
-bind(
-    name = "libssl",
-    actual = "@boringssl//:ssl",
-)
-
-bind(
-    name = "zlib",
-    actual = "@zlib_repo//:z",
-)
-
-bind(
-    name = "nanopb",
-    actual = "@grpc//third_party/nanopb",
-)
-
-bind(
-    name = "cares",
-    actual = "@cares_repo//:ares",
-)
-
-
-http_archive(
-  name = "grpc",
-  sha256 = "f0143c99942f47986713a92fca43b2fe8441e46f30caea32c9430f31600a9808",
-  strip_prefix = "grpc-1.6.0",
-  urls = ["https://github.com/grpc/grpc/archive/v1.6.0.tar.gz"]
-)
-
-http_archive(
-  name = "boringssl",
-  sha256 = "6186514a059ea7e111d8c7fac4bbe0b192cee518d739b369d43afc8d7c799e07",
-  strip_prefix = "boringssl-74ffd81aa7ec3d0aa3d3d820dbeda934958ca81a",
-  urls = ["https://github.com/google/boringssl/archive/74ffd81aa7ec3d0aa3d3d820dbeda934958ca81a.tar.gz"]
-)
-
-new_http_archive(
-  name = "zlib_repo",
-  sha256 = "629380c90a77b964d896ed37163f5c3a34f6e6d897311f1df2a7016355c45eff",
-  strip_prefix = "zlib-1.2.11",
-  urls = ["https://github.com/madler/zlib/archive/v1.2.11.tar.gz"],
-  build_file = "@grpc//:third_party/zlib.BUILD"
-)
-
-http_archive(
-  name = "cares_repo",
-  sha256 = "05c54bd63e2cd2d350e2c8c42d74c621e2e66337c78db59f360f5fa974fe85e3",
-  strip_prefix = "c-ares-extra-dir-1.12.0",
-  urls = ["https://github.com/endobson/c-ares/archive/extra-dir-1.12.0.tar.gz"],
-)
-
+## Bazel (for build event protocol)
 http_archive(
   name = "io_bazel",
-  sha256 = "4193fa72356d62eb648d470f73d8bc4ae910fbf29eb3ad77274ec7ff9346849b",
-  strip_prefix = "bazel-visibility",
-  urls = ["https://github.com/endobson/bazel/archive/visibility.tar.gz"],
+  sha256 = "f07d55500307f1dfafc47203116e36f9d3fde98423db84673a393d3975c63935",
+  strip_prefix = "bazel-98af5be784026cff466d4a4a090b60ca3255e963",
+  urls = ["https://github.com/endobson/bazel/archive/98af5be784026cff466d4a4a090b60ca3255e963.tar.gz"],
 )
-
-http_archive(
-  name = "minimal_racket",
-  sha256 = "9cdf52e420e7a3e1f14033c9db427b6f28f95529f88bb48f1f9422bdfaea3013",
-  strip_prefix = "minimal-racket-08cd37aa20aec7065a579130f612fa93af764d81",
-  urls = ["https://github.com/endobson/minimal-racket/archive/08cd37aa20aec7065a579130f612fa93af764d81.tar.gz"]
-)
-
-load("@minimal_racket//:releases.bzl", "racket_releases")
-racket_releases()
-
-

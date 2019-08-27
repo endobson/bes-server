@@ -6,6 +6,7 @@ cc_library(
     "@com_google_absl//absl/synchronization",
     "@com_google_absl//absl/container:flat_hash_map",
     "//google:google_devtools_build_v1_publish_build_event_cc_grpc",
+    "//google:google_watcher_v1_watch_cc_grpc",
     ":build_event_stream_cc_proto",
   ]
 )

@@ -83,3 +83,30 @@ proto_library(
         "@com_google_protobuf//:descriptor_proto",
     ],
 )
+
+proto_library(
+    name = "google_watcher_v1_watch_proto",
+    srcs = ["watcher/v1/watch.proto"],
+    deps = [
+        ":google_api_annotations_proto",
+        "@com_google_protobuf//:any_proto",
+    ],
+)
+
+cc_proto_library(
+    name = "google_watcher_v1_watch_cc_proto",
+    deps = [
+        ":google_watcher_v1_watch_proto"
+    ],
+)
+
+cc_grpc_library(
+    name = "google_watcher_v1_watch_cc_grpc",
+    srcs = [
+        ":google_watcher_v1_watch_proto"
+    ],
+    deps = [
+        ":google_watcher_v1_watch_cc_proto"
+    ],
+    grpc_only = True,
+)

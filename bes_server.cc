@@ -7,6 +7,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/synchronization/mutex.h"
 #include "google/devtools/build/v1/publish_build_event.grpc.pb.h"
+#include "google/watcher/v1/watch.grpc.pb.h"
 #include "google/protobuf/empty.pb.h"
 #include "src/main/java/com/google/devtools/build/lib/buildeventstream/proto/build_event_stream.pb.h"
 
@@ -189,16 +190,21 @@ class PublishBuildEventServiceImpl : public google::devtools::build::v1::Publish
   std::vector<FinishedBuild> finished_builds_;
 };
 
+class WatcherServiceImpl : public google::watcher::v1::Watcher::Service {
+
+};
 
 grpc::Server* server;
 
 void RunServer() {
   std::string server_address("0.0.0.0:8089");
-  PublishBuildEventServiceImpl service;
+  PublishBuildEventServiceImpl bes_service;
+  WatcherServiceImpl watcher_service;
 
   grpc::ServerBuilder builder;
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
-  builder.RegisterService(&service);
+  builder.RegisterService(&bes_service);
+  builder.RegisterService(&watcher_service);
   server = builder.BuildAndStart().release();
 
   std::cout << "Server listening on " << server_address << std::endl;

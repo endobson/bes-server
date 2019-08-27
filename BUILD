@@ -5,8 +5,8 @@ cc_library(
     "@com_github_grpc_grpc//:grpc++",
     "@com_google_absl//absl/synchronization",
     "@com_google_absl//absl/container:flat_hash_map",
-    "//google:google_devtools_build_v1_publish_build_event_cc_grpc",
-    "//google:google_watcher_v1_watch_cc_grpc",
+    "//google/devtools/build/v1:publish_build_event_cc_grpc",
+    "//google/watcher/v1:watch_cc_grpc",
     ":build_event_stream_cc_proto",
   ]
 )

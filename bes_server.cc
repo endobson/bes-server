@@ -4,6 +4,8 @@
 
 #include <grpc++/grpc++.h>
 
+#include "absl/container/flat_hash_map.h"
+#include "absl/synchronization/mutex.h"
 #include "google/devtools/build/v1/publish_build_event.grpc.pb.h"
 #include "google/protobuf/empty.pb.h"
 #include "src/main/java/com/google/devtools/build/lib/buildeventstream/proto/build_event_stream.pb.h"
@@ -42,13 +44,12 @@ struct FinishedBuild {
    FinishedInvocation invocation;
 };
 
-
-
 class PublishBuildEventServiceImpl : public google::devtools::build::v1::PublishBuildEvent::Service {
   grpc::Status PublishLifecycleEvent(
       grpc::ServerContext* context,
       const PublishLifecycleEventRequest* request,
       google::protobuf::Empty* reply) override {
+    absl::MutexLock l(&mu);
 
     const OrderedBuildEvent& ordered = request->build_event();
     const OuterBuildEvent& build_event = ordered.event();
@@ -132,6 +133,7 @@ class PublishBuildEventServiceImpl : public google::devtools::build::v1::Publish
                                PublishBuildToolEventStreamRequest>* stream) override {
     PublishBuildToolEventStreamRequest request;
     while (stream->Read(&request)) {
+      absl::MutexLock l(&mu);
       const OrderedBuildEvent& ordered = request.ordered_build_event();
       const OuterBuildEvent& outer_build_event = ordered.event();
 
@@ -182,7 +184,8 @@ class PublishBuildEventServiceImpl : public google::devtools::build::v1::Publish
     return grpc::Status::OK;
   }
 
-  std::map<std::string, PartialBuild> partial_builds_;
+  absl::Mutex mu;
+  absl::flat_hash_map<std::string, PartialBuild> partial_builds_ ABSL_GUARDED_BY(mu);
   std::vector<FinishedBuild> finished_builds_;
 };
 

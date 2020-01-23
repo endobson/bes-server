@@ -50,7 +50,7 @@ class PublishBuildEventServiceImpl : public google::devtools::build::v1::Publish
       grpc::ServerContext* context,
       const PublishLifecycleEventRequest* request,
       google::protobuf::Empty* reply) override {
-    absl::MutexLock l(&mu);
+    absl::MutexLock l(&mu_);
 
     const OrderedBuildEvent& ordered = request->build_event();
     const OuterBuildEvent& build_event = ordered.event();
@@ -134,7 +134,7 @@ class PublishBuildEventServiceImpl : public google::devtools::build::v1::Publish
                                PublishBuildToolEventStreamRequest>* stream) override {
     PublishBuildToolEventStreamRequest request;
     while (stream->Read(&request)) {
-      absl::MutexLock l(&mu);
+      absl::MutexLock l(&mu_);
       const OrderedBuildEvent& ordered = request.ordered_build_event();
       const OuterBuildEvent& outer_build_event = ordered.event();
 
@@ -185,8 +185,8 @@ class PublishBuildEventServiceImpl : public google::devtools::build::v1::Publish
     return grpc::Status::OK;
   }
 
-  absl::Mutex mu;
-  absl::flat_hash_map<std::string, PartialBuild> partial_builds_ ABSL_GUARDED_BY(mu);
+  absl::Mutex mu_;
+  absl::flat_hash_map<std::string, PartialBuild> partial_builds_ ABSL_GUARDED_BY(mu_);
   std::vector<FinishedBuild> finished_builds_;
 };
 

@@ -1,6 +1,7 @@
 workspace(name = "bes_example")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 # GRPC
 http_archive(
@@ -8,6 +9,14 @@ http_archive(
   sha256 = "2fcb7f1ab160d6fd3aaade64520be3e5446fc4c6fa7ba6581afdc4e26094bd81",
   strip_prefix = "grpc-1.26.0",
   urls = ["https://github.com/grpc/grpc/archive/v1.26.0.tar.gz"]
+)
+
+# BoringSSL since grpc uses a spammy version without a sha256
+git_repository(
+    name = "boringssl",
+    commit = "83da28a68f32023fd3b95a8ae94991a07b1f6c62",
+    shallow_since = "1571438383 +0000",
+    remote = "https://boringssl.googlesource.com/boringssl",
 )
 
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps",)

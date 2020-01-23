@@ -19,11 +19,13 @@ using google::devtools::build::v1::PublishBuildToolEventStreamRequest;
 using google::devtools::build::v1::PublishLifecycleEventRequest;
 using build_event_stream::ActionExecuted;
 using build_event_stream::BuildEvent;
+using build_event_stream::BuildStarted;
 using build_event_stream::File;
 
 struct PartialInvocation {
    std::string build_id;
    std::string invocation_id;
+   std::string workspace_directory;
    std::vector<std::string> stderr_files;
 };
 
@@ -37,6 +39,7 @@ struct PartialBuild {
 struct FinishedInvocation {
    std::string build_id;
    std::string invocation_id;
+   std::string workspace_directory;
    std::vector<std::string> stderr_files;
 };
 
@@ -51,6 +54,8 @@ class PublishBuildEventServiceImpl : public google::devtools::build::v1::Publish
       const PublishLifecycleEventRequest* request,
       google::protobuf::Empty* reply) override {
     absl::MutexLock l(&mu_);
+
+
 
     const OrderedBuildEvent& ordered = request->build_event();
     const OuterBuildEvent& build_event = ordered.event();
@@ -81,6 +86,7 @@ class PublishBuildEventServiceImpl : public google::devtools::build::v1::Publish
         finished.build_id = partial.build_id;
         finished.invocation.build_id = partial.invocation.build_id;
         finished.invocation.invocation_id = partial.invocation.invocation_id;
+        finished.invocation.workspace_directory = partial.invocation.workspace_directory;
         finished.invocation.stderr_files = partial.invocation.stderr_files;
 
         finished_builds_.push_back(finished);
@@ -150,6 +156,11 @@ class PublishBuildEventServiceImpl : public google::devtools::build::v1::Publish
           }
 
           switch (build_event.payload_case()) {
+            case BuildEvent::kStarted: {
+              const BuildStarted& started = build_event.started();
+              PartialBuild& partial = partial_builds_.at(ordered.stream_id().build_id());
+              partial.invocation.workspace_directory = started.workspace_directory();
+            }
             case BuildEvent::kAction: {
               const ActionExecuted& action = build_event.action();
               if (action.success()) break;

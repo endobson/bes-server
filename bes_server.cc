@@ -1,74 +1,73 @@
+#include <csignal>
 #include <iostream>
 #include <string>
-#include <csignal>
-
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/synchronization/mutex.h"
 #include "google/devtools/build/v1/publish_build_event.grpc.pb.h"
-#include "google/watcher/v1/watch.grpc.pb.h"
 #include "google/protobuf/empty.pb.h"
+#include "google/watcher/v1/watch.grpc.pb.h"
 #include "grpc++/grpc++.h"
 #include "src/main/java/com/google/devtools/build/lib/buildeventstream/proto/build_event_stream.pb.h"
 
 using OuterBuildEvent = google::devtools::build::v1::BuildEvent;
-using google::devtools::build::v1::OrderedBuildEvent;
-using google::devtools::build::v1::PublishBuildEvent;
-using google::devtools::build::v1::PublishBuildToolEventStreamResponse;
-using google::devtools::build::v1::PublishBuildToolEventStreamRequest;
-using google::devtools::build::v1::PublishLifecycleEventRequest;
 using build_event_stream::ActionExecuted;
 using build_event_stream::BuildEvent;
 using build_event_stream::BuildStarted;
 using build_event_stream::File;
+using google::devtools::build::v1::OrderedBuildEvent;
+using google::devtools::build::v1::PublishBuildEvent;
+using google::devtools::build::v1::PublishBuildToolEventStreamRequest;
+using google::devtools::build::v1::PublishBuildToolEventStreamResponse;
+using google::devtools::build::v1::PublishLifecycleEventRequest;
 
 struct PartialInvocation {
-   std::string build_id;
-   std::string invocation_id;
-   std::string workspace_directory;
-   std::vector<std::string> stderr_files;
+  std::string build_id;
+  std::string invocation_id;
+  std::string workspace_directory;
+  std::vector<std::string> stderr_files;
 };
 
 struct PartialBuild {
-   std::string build_id;
-   bool invocation_started = false;
-   bool invocation_finished = false;
-   PartialInvocation invocation;
+  std::string build_id;
+  bool invocation_started = false;
+  bool invocation_finished = false;
+  PartialInvocation invocation;
 };
 
 struct FinishedInvocation {
-   std::string build_id;
-   std::string invocation_id;
-   std::string workspace_directory;
-   std::vector<std::string> stderr_files;
+  std::string build_id;
+  std::string invocation_id;
+  std::string workspace_directory;
+  std::vector<std::string> stderr_files;
 };
 
 struct FinishedBuild {
-   std::string build_id;
-   FinishedInvocation invocation;
+  std::string build_id;
+  FinishedInvocation invocation;
 };
 
 class FinishedBuildSink {
  public:
-  virtual ~FinishedBuildSink() {};
+  virtual ~FinishedBuildSink(){};
 
   virtual void BuildFinished(const FinishedBuild& build) = 0;
 };
 
 class NoopFinishedBuildSink : public FinishedBuildSink {
  public:
-  void BuildFinished(const FinishedBuild& build) override {};
+  void BuildFinished(const FinishedBuild& build) override{};
 };
 
-class PublishBuildEventServiceImpl : public google::devtools::build::v1::PublishBuildEvent::Service {
+class PublishBuildEventServiceImpl
+    : public google::devtools::build::v1::PublishBuildEvent::Service {
  public:
-  PublishBuildEventServiceImpl(FinishedBuildSink* finished_build_sink) :
-    finished_build_sink_(finished_build_sink) {}
+  PublishBuildEventServiceImpl(FinishedBuildSink* finished_build_sink)
+      : finished_build_sink_(finished_build_sink) {}
 
  private:
   grpc::Status PublishLifecycleEvent(
-      grpc::ServerContext* context,
-      const PublishLifecycleEventRequest* request,
+      grpc::ServerContext* context, const PublishLifecycleEventRequest* request,
       google::protobuf::Empty* reply) override {
     absl::MutexLock l(&mu_);
 
@@ -88,12 +87,14 @@ class PublishBuildEventServiceImpl : public google::devtools::build::v1::Publish
         const PartialBuild& partial = partial_builds_.at(build_id);
 
         if (!partial.invocation_started) {
-          std::cerr << "Must start partial invocation before finishing build." << std::endl;
+          std::cerr << "Must start partial invocation before finishing build."
+                    << std::endl;
           abort();
         }
 
         if (!partial.invocation_finished) {
-          std::cerr << "Must finish partial invocation before finishing build." << std::endl;
+          std::cerr << "Must finish partial invocation before finishing build."
+                    << std::endl;
           abort();
         }
 
@@ -101,7 +102,8 @@ class PublishBuildEventServiceImpl : public google::devtools::build::v1::Publish
         finished.build_id = partial.build_id;
         finished.invocation.build_id = partial.invocation.build_id;
         finished.invocation.invocation_id = partial.invocation.invocation_id;
-        finished.invocation.workspace_directory = partial.invocation.workspace_directory;
+        finished.invocation.workspace_directory =
+            partial.invocation.workspace_directory;
         finished.invocation.stderr_files = partial.invocation.stderr_files;
 
         partial_builds_.erase(build_id);
@@ -118,7 +120,8 @@ class PublishBuildEventServiceImpl : public google::devtools::build::v1::Publish
       case OuterBuildEvent::kInvocationAttemptStarted: {
         PartialBuild& partial = partial_builds_.at(build_id);
         if (partial.invocation_started) {
-          std::cerr << "Support for multiple invocations not yet implemented." << std::endl;
+          std::cerr << "Support for multiple invocations not yet implemented."
+                    << std::endl;
           abort();
         }
 
@@ -140,12 +143,11 @@ class PublishBuildEventServiceImpl : public google::devtools::build::v1::Publish
       }
 
       default:
-        std::cerr << "Unexpected Lifecycle event:" << std::endl << request->DebugString() << std::endl;
+        std::cerr << "Unexpected Lifecycle event:" << std::endl
+                  << request->DebugString() << std::endl;
         abort();
         break;
     }
-
-    //std::cout << "Lifecycle event:" << std::endl << request->DebugString() << std::endl;
 
     return grpc::Status::OK;
   }
@@ -153,7 +155,8 @@ class PublishBuildEventServiceImpl : public google::devtools::build::v1::Publish
   grpc::Status PublishBuildToolEventStream(
       grpc::ServerContext* context,
       grpc::ServerReaderWriter<PublishBuildToolEventStreamResponse,
-                               PublishBuildToolEventStreamRequest>* stream) override {
+                               PublishBuildToolEventStreamRequest>* stream)
+      override {
     PublishBuildToolEventStreamRequest request;
     while (stream->Read(&request)) {
       absl::MutexLock l(&mu_);
@@ -167,24 +170,30 @@ class PublishBuildEventServiceImpl : public google::devtools::build::v1::Publish
         case OuterBuildEvent::kBazelEvent: {
           BuildEvent build_event;
           if (!outer_build_event.bazel_event().UnpackTo(&build_event)) {
-            std::cerr << "Unexpected event:" << std::endl << outer_build_event.DebugString() << std::endl;
+            std::cerr << "Unexpected event:" << std::endl
+                      << outer_build_event.DebugString() << std::endl;
             abort();
           }
 
           switch (build_event.payload_case()) {
             case BuildEvent::kStarted: {
               const BuildStarted& started = build_event.started();
-              PartialBuild& partial = partial_builds_.at(ordered.stream_id().build_id());
-              partial.invocation.workspace_directory = started.workspace_directory();
+              PartialBuild& partial =
+                  partial_builds_.at(ordered.stream_id().build_id());
+              partial.invocation.workspace_directory =
+                  started.workspace_directory();
             }
             case BuildEvent::kAction: {
               const ActionExecuted& action = build_event.action();
               if (action.success()) break;
 
-              if (action.has_stderr() && action.stderr().file_case() == File::kUri) {
-                PartialBuild& partial = partial_builds_.at(ordered.stream_id().build_id());
+              if (action.has_stderr() &&
+                  action.stderr().file_case() == File::kUri) {
+                PartialBuild& partial =
+                    partial_builds_.at(ordered.stream_id().build_id());
                 // TODO check started and that invocation id matches
-                partial.invocation.stderr_files.push_back(action.stderr().uri());
+                partial.invocation.stderr_files.push_back(
+                    action.stderr().uri());
               }
 
               break;
@@ -195,12 +204,11 @@ class PublishBuildEventServiceImpl : public google::devtools::build::v1::Publish
           break;
         }
         default:
-          std::cerr << "Unexpected tool event:" << std::endl << request.DebugString() << std::endl;
+          std::cerr << "Unexpected tool event:" << std::endl
+                    << request.DebugString() << std::endl;
           abort();
           break;
       };
-
-      //std::cout << "EventStream event:" << std::endl << event.DebugString() << std::endl;
 
       PublishBuildToolEventStreamResponse response;
       *response.mutable_stream_id() = ordered.stream_id();
@@ -213,12 +221,9 @@ class PublishBuildEventServiceImpl : public google::devtools::build::v1::Publish
   }
 
   absl::Mutex mu_;
-  absl::flat_hash_map<std::string, PartialBuild> partial_builds_ ABSL_GUARDED_BY(mu_);
+  absl::flat_hash_map<std::string, PartialBuild> partial_builds_
+      ABSL_GUARDED_BY(mu_);
   FinishedBuildSink* finished_build_sink_;
-};
-
-class WatcherServiceImpl : public google::watcher::v1::Watcher::Service {
-
 };
 
 grpc::Server* server;
@@ -246,7 +251,6 @@ void signal_handler(int sig) {
 }
 
 int main(int argc, char** argv) {
-
   std::signal(SIGINT, signal_handler);
 
   RunServer();

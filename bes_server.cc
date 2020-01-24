@@ -48,14 +48,29 @@ struct FinishedBuild {
    FinishedInvocation invocation;
 };
 
+class FinishedBuildSink {
+ public:
+  virtual ~FinishedBuildSink() {};
+
+  virtual void BuildFinished(const FinishedBuild& build) = 0;
+};
+
+class NoopFinishedBuildSink : public FinishedBuildSink {
+ public:
+  void BuildFinished(const FinishedBuild& build) override {};
+};
+
 class PublishBuildEventServiceImpl : public google::devtools::build::v1::PublishBuildEvent::Service {
+ public:
+  PublishBuildEventServiceImpl(FinishedBuildSink* finished_build_sink) :
+    finished_build_sink_(finished_build_sink) {}
+
+ private:
   grpc::Status PublishLifecycleEvent(
       grpc::ServerContext* context,
       const PublishLifecycleEventRequest* request,
       google::protobuf::Empty* reply) override {
     absl::MutexLock l(&mu_);
-
-
 
     const OrderedBuildEvent& ordered = request->build_event();
     const OuterBuildEvent& build_event = ordered.event();
@@ -89,7 +104,6 @@ class PublishBuildEventServiceImpl : public google::devtools::build::v1::Publish
         finished.invocation.workspace_directory = partial.invocation.workspace_directory;
         finished.invocation.stderr_files = partial.invocation.stderr_files;
 
-        finished_builds_.push_back(finished);
         partial_builds_.erase(build_id);
 
         std::cout << "Finished build: " << finished.build_id << " "
@@ -97,6 +111,8 @@ class PublishBuildEventServiceImpl : public google::devtools::build::v1::Publish
         for (const auto& stderr_file : finished.invocation.stderr_files) {
           std::cout << "Stderr available at: " << stderr_file << std::endl;
         }
+
+        finished_build_sink_->BuildFinished(finished);
         break;
       }
       case OuterBuildEvent::kInvocationAttemptStarted: {
@@ -198,7 +214,7 @@ class PublishBuildEventServiceImpl : public google::devtools::build::v1::Publish
 
   absl::Mutex mu_;
   absl::flat_hash_map<std::string, PartialBuild> partial_builds_ ABSL_GUARDED_BY(mu_);
-  std::vector<FinishedBuild> finished_builds_;
+  FinishedBuildSink* finished_build_sink_;
 };
 
 class WatcherServiceImpl : public google::watcher::v1::Watcher::Service {
@@ -208,14 +224,14 @@ class WatcherServiceImpl : public google::watcher::v1::Watcher::Service {
 grpc::Server* server;
 
 void RunServer() {
-  std::string server_address("0.0.0.0:8089");
-  PublishBuildEventServiceImpl bes_service;
-  WatcherServiceImpl watcher_service;
-
   grpc::ServerBuilder builder;
-  builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
+
+  NoopFinishedBuildSink sink;
+  PublishBuildEventServiceImpl bes_service(&sink);
   builder.RegisterService(&bes_service);
-  builder.RegisterService(&watcher_service);
+
+  std::string server_address("0.0.0.0:8089");
+  builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
   server = builder.BuildAndStart().release();
 
   std::cout << "Server listening on " << server_address << std::endl;

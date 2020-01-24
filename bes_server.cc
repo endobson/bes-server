@@ -2,13 +2,13 @@
 #include <string>
 #include <csignal>
 
-#include <grpc++/grpc++.h>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/synchronization/mutex.h"
 #include "google/devtools/build/v1/publish_build_event.grpc.pb.h"
 #include "google/watcher/v1/watch.grpc.pb.h"
 #include "google/protobuf/empty.pb.h"
+#include "grpc++/grpc++.h"
 #include "src/main/java/com/google/devtools/build/lib/buildeventstream/proto/build_event_stream.pb.h"
 
 using OuterBuildEvent = google::devtools::build::v1::BuildEvent;

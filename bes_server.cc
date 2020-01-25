@@ -1,10 +1,14 @@
 #include <csignal>
+#include <fstream>
 #include <iostream>
 #include <string>
 #include <thread>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/strings/str_split.h"
+#include "absl/strings/strip.h"
 #include "absl/synchronization/mutex.h"
+#include "google/bytestream/bytestream.grpc.pb.h"
 #include "google/devtools/build/v1/publish_build_event.grpc.pb.h"
 #include "google/protobuf/empty.pb.h"
 #include "google/watcher/v1/watch.grpc.pb.h"
@@ -16,6 +20,9 @@ using build_event_stream::ActionExecuted;
 using build_event_stream::BuildEvent;
 using build_event_stream::BuildStarted;
 using build_event_stream::File;
+using google::bytestream::ByteStream;
+using google::bytestream::ReadRequest;
+using google::bytestream::ReadResponse;
 using google::devtools::build::v1::OrderedBuildEvent;
 using google::devtools::build::v1::PublishBuildEvent;
 using google::devtools::build::v1::PublishBuildToolEventStreamRequest;
@@ -64,6 +71,8 @@ class ErrorFindingFinishedBuildSink : public FinishedBuildSink {
  public:
   ErrorFindingFinishedBuildSink() {
     stop_thread_ = false;
+    bytestream_stub_ = ByteStream::NewStub(grpc::CreateChannel(
+        "localhost:9092", grpc::InsecureChannelCredentials()));
     thread_ = std::thread([this] { this->Run(); });
   };
 
@@ -93,6 +102,48 @@ class ErrorFindingFinishedBuildSink : public FinishedBuildSink {
       FinishedBuild build = build_queue_.front();
       build_queue_.pop_front();
       mu_.Unlock();
+
+      const FinishedInvocation& invocation = build.invocation;
+      if (invocation.workspace_directory !=
+          "/Users/endobson/proj/racket/yaspl2") {
+        continue;
+      }
+
+      std::ofstream output_file;
+      output_file.open("/Users/endobson/proj/racket/yaspl2/errors.err",
+                       std::ios::binary | std::ios::out | std::ios::trunc);
+
+      for (const auto& stderr_file : invocation.stderr_files) {
+        absl::string_view resource = stderr_file;
+        if (!absl::ConsumePrefix(&resource, "bytestream://")) {
+          continue;
+        }
+        if (!absl::ConsumePrefix(&resource, "localhost:9092/")) {
+          continue;
+        }
+
+        grpc::ClientContext context;
+        ReadRequest request;
+        request.set_resource_name(std::string(resource));
+        std::unique_ptr<grpc::ClientReader<ReadResponse>> reader(
+            bytestream_stub_->Read(&context, request));
+        ReadResponse response;
+        std::string stderr_contents;
+        while (reader->Read(&response)) {
+          stderr_contents += response.data();
+        }
+        grpc::Status status = reader->Finish();
+        if (status.ok()) {
+          for (absl::string_view line : absl::StrSplit(stderr_contents, '\n')) {
+            if (absl::ConsumePrefix(&line, "Location: ")) {
+              output_file << line << ": Error details" << std::endl;
+            }
+          }
+        } else {
+          std::cout << "grpc status: " << status.error_message() << std::endl;
+        }
+      }
+      output_file.close();
     }
   }
 
@@ -104,6 +155,7 @@ class ErrorFindingFinishedBuildSink : public FinishedBuildSink {
   std::deque<FinishedBuild> build_queue_ ABSL_GUARDED_BY(mu_);
   bool stop_thread_ ABSL_GUARDED_BY(mu_);
   std::thread thread_;
+  std::unique_ptr<ByteStream::Stub> bytestream_stub_;
 };
 
 class PublishBuildEventServiceImpl

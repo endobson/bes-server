@@ -1,6 +1,7 @@
 #include <csignal>
 #include <iostream>
 #include <string>
+#include <thread>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/synchronization/mutex.h"
@@ -57,6 +58,52 @@ class FinishedBuildSink {
 class NoopFinishedBuildSink : public FinishedBuildSink {
  public:
   void BuildFinished(const FinishedBuild& build) override{};
+};
+
+class ErrorFindingFinishedBuildSink : public FinishedBuildSink {
+ public:
+  ErrorFindingFinishedBuildSink() {
+    stop_thread_ = false;
+    thread_ = std::thread([this] { this->Run(); });
+  };
+
+  ~ErrorFindingFinishedBuildSink() {
+    {
+      absl::MutexLock l(&mu_);
+      stop_thread_ = true;
+    }
+    thread_.join();
+  };
+
+  void BuildFinished(const FinishedBuild& build) override {
+    absl::MutexLock l(&mu_);
+    build_queue_.push_back(build);
+  }
+
+ private:
+  void Run() {
+    while (true) {
+      mu_.LockWhen(
+          absl::Condition(this, &ErrorFindingFinishedBuildSink::IsReady));
+      if (stop_thread_) {
+        mu_.Unlock();
+        return;
+      }
+
+      FinishedBuild build = build_queue_.front();
+      build_queue_.pop_front();
+      mu_.Unlock();
+    }
+  }
+
+  bool IsReady() EXCLUSIVE_LOCKS_REQUIRED(mu_) {
+    return stop_thread_ || !this->build_queue_.empty();
+  }
+
+  absl::Mutex mu_;
+  std::deque<FinishedBuild> build_queue_ ABSL_GUARDED_BY(mu_);
+  bool stop_thread_ ABSL_GUARDED_BY(mu_);
+  std::thread thread_;
 };
 
 class PublishBuildEventServiceImpl
@@ -232,7 +279,7 @@ grpc::Server* server;
 void RunServer() {
   grpc::ServerBuilder builder;
 
-  NoopFinishedBuildSink sink;
+  ErrorFindingFinishedBuildSink sink;
   PublishBuildEventServiceImpl bes_service(&sink);
   builder.RegisterService(&bes_service);
 

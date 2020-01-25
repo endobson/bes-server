@@ -182,6 +182,7 @@ class PublishBuildEventServiceImpl
                   partial_builds_.at(ordered.stream_id().build_id());
               partial.invocation.workspace_directory =
                   started.workspace_directory();
+              break;
             }
             case BuildEvent::kAction: {
               const ActionExecuted& action = build_event.action();

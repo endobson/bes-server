@@ -3,6 +3,7 @@ cc_library(
   srcs = ["bes_server.cc"],
   deps = [
     "@com_github_grpc_grpc//:grpc++",
+    "@com_googlesource_code_re2//:re2",
     "@com_google_absl//absl/synchronization",
     "@com_google_absl//absl/container:flat_hash_map",
     "//google/devtools/build/v1:publish_build_event_cc_grpc",

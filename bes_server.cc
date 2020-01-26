@@ -5,6 +5,7 @@
 #include <thread>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/strings/str_replace.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/strip.h"
 #include "absl/synchronization/mutex.h"
@@ -13,6 +14,7 @@
 #include "google/protobuf/empty.pb.h"
 #include "google/watcher/v1/watch.grpc.pb.h"
 #include "grpc++/grpc++.h"
+#include "re2/re2.h"
 #include "src/main/java/com/google/devtools/build/lib/buildeventstream/proto/build_event_stream.pb.h"
 
 using OuterBuildEvent = google::devtools::build::v1::BuildEvent;
@@ -134,10 +136,16 @@ class ErrorFindingFinishedBuildSink : public FinishedBuildSink {
         }
         grpc::Status status = reader->Finish();
         if (status.ok()) {
-          for (absl::string_view line : absl::StrSplit(stderr_contents, '\n')) {
-            if (absl::ConsumePrefix(&line, "Location: ")) {
-              output_file << line << ": Error details" << std::endl;
-            }
+          absl::string_view stderr_view = stderr_contents;
+          std::vector<std::string> errors;
+          if (IsTypeCheckingErrors(&stderr_view)) {
+            errors = GetTypecheckingErrors(stderr_view);
+          } else {
+            errors = {"ERROR: Unknown errors"};
+          }
+
+          for (const auto& error : errors) {
+            output_file << error << std::endl;
           }
         } else {
           std::cout << "grpc status: " << status.error_message() << std::endl;
@@ -149,6 +157,31 @@ class ErrorFindingFinishedBuildSink : public FinishedBuildSink {
 
   bool IsReady() EXCLUSIVE_LOCKS_REQUIRED(mu_) {
     return stop_thread_ || !this->build_queue_.empty();
+  }
+
+  bool IsTypeCheckingErrors(absl::string_view* stderr_contents) {
+    static re2::RE2 re("Typechecking failed for module: .*\n\n");
+    return re2::RE2::Consume(stderr_contents, re);
+  }
+
+  std::vector<std::string> GetTypecheckingErrors(
+      absl::string_view stderr_contents) {
+    std::vector<std::string> errors;
+    static re2::RE2 re(
+        "Location: (.*)\\nFunction:.*\\n(?s:(.*?)\\n(?:\\n|\\z))");
+
+    absl::string_view location;
+    absl::string_view details;
+    while (re2::RE2::Consume(&stderr_contents, re, &location, &details)) {
+      std::string single_line_details =
+          absl::StrReplaceAll(details, {{"\n", " "}});
+      errors.push_back(absl::StrCat(location, ": ", single_line_details));
+    }
+    if (errors.empty()) {
+      errors.push_back("ERROR: Unknown type checking errors");
+    }
+
+    return errors;
   }
 
   absl::Mutex mu_;

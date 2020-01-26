@@ -42,3 +42,11 @@ http_archive(
   strip_prefix = "abseil-cpp-7c7754fb3ed9ffb57d35fe8658f3ba4d73a31e72",
   sha256 = "71d00d15fe6370220b6685552fb66e5814f4dd2e130f3836fc084c894943753f",
 )
+
+# re2 (2020-01-01)
+http_archive(
+  name = "com_googlesource_code_re2",
+  sha256 = "50dce81b27ed69b3d6a03ac5c7d24845a53aa5b472ef4d5d41109d3935de4f0b",
+  strip_prefix = "re2-9c9d64d9396af4d97e670b7828c2d770383810f4",
+  urls = ["https://github.com/google/re2/archive/9c9d64d9396af4d97e670b7828c2d770383810f4.tar.gz"]
+)

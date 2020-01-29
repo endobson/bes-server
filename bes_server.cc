@@ -141,7 +141,9 @@ class ErrorFindingFinishedBuildSink : public FinishedBuildSink {
           if (IsTypeCheckingErrors(&stderr_view)) {
             errors = GetTypecheckingErrors(stderr_view);
           } else if (IsImportResolutionErrors(&stderr_view)) {
-            errors = GetImportResolutionErrors(stderr_view);
+            errors = GetSingleLineErrors(stderr_view);
+          } else if (IsTypeResolutionErrors(&stderr_view)) {
+            errors = GetSingleLineErrors(stderr_view);
           } else {
             errors = {"ERROR: Unknown errors"};
           }
@@ -191,10 +193,15 @@ class ErrorFindingFinishedBuildSink : public FinishedBuildSink {
     return re2::RE2::Consume(stderr_contents, re);
   }
 
-  std::vector<std::string> GetImportResolutionErrors(
+  bool IsTypeResolutionErrors(absl::string_view* stderr_contents) {
+    static re2::RE2 re("Errors resolving types for module: .*\n\n");
+    return re2::RE2::Consume(stderr_contents, re);
+  }
+
+  // This handles when the input lines are in exactly the right output format
+  std::vector<std::string> GetSingleLineErrors(
       absl::string_view stderr_contents) {
     std::vector<std::string> errors;
-    // Current format is already the correct output format
     static re2::RE2 re("(.*)\n");
 
     absl::string_view error;

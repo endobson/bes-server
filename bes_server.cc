@@ -144,6 +144,8 @@ class ErrorFindingFinishedBuildSink : public FinishedBuildSink {
             errors = GetSingleLineErrors(stderr_view);
           } else if (IsTypeResolutionErrors(&stderr_view)) {
             errors = GetSingleLineErrors(stderr_view);
+          } else if (IsValidationErrors(&stderr_view)) {
+            errors = GetSingleLineErrors(stderr_view);
           } else {
             errors = {"ERROR: Unknown errors"};
           }
@@ -195,6 +197,11 @@ class ErrorFindingFinishedBuildSink : public FinishedBuildSink {
 
   bool IsTypeResolutionErrors(absl::string_view* stderr_contents) {
     static re2::RE2 re("Errors resolving types for module: .*\n\n");
+    return re2::RE2::Consume(stderr_contents, re);
+  }
+
+  bool IsValidationErrors(absl::string_view* stderr_contents) {
+    static re2::RE2 re("Errors validating module: .*\n\n");
     return re2::RE2::Consume(stderr_contents, re);
   }
 

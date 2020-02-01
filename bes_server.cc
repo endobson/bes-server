@@ -146,6 +146,8 @@ class ErrorFindingFinishedBuildSink : public FinishedBuildSink {
             errors = GetSingleLineErrors(stderr_view);
           } else if (IsValidationErrors(&stderr_view)) {
             errors = GetSingleLineErrors(stderr_view);
+          } else if (IsParsingErrors(&stderr_view)) {
+            errors = GetSingleLineErrors(stderr_view);
           } else {
             errors = {"ERROR: Unknown errors"};
           }
@@ -202,6 +204,11 @@ class ErrorFindingFinishedBuildSink : public FinishedBuildSink {
 
   bool IsValidationErrors(absl::string_view* stderr_contents) {
     static re2::RE2 re("Errors validating module: .*\n\n");
+    return re2::RE2::Consume(stderr_contents, re);
+  }
+
+  bool IsParsingErrors(absl::string_view* stderr_contents) {
+    static re2::RE2 re("Errors parsing module:\n\n");
     return re2::RE2::Consume(stderr_contents, re);
   }
 

@@ -6,9 +6,9 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 # GRPC
 http_archive(
   name = "com_github_grpc_grpc",
-  sha256 = "2fcb7f1ab160d6fd3aaade64520be3e5446fc4c6fa7ba6581afdc4e26094bd81",
-  strip_prefix = "grpc-1.26.0",
-  urls = ["https://github.com/grpc/grpc/archive/v1.26.0.tar.gz"]
+  sha256 = "9647220c699cea4dafa92ec0917c25c7812be51a18143af047e20f3fb05adddc",
+  strip_prefix = "grpc-1.43.0",
+  urls = ["https://github.com/grpc/grpc/archive/v1.43.0.tar.gz"]
 )
 
 # BoringSSL since grpc uses a spammy version without a sha256
@@ -19,28 +19,12 @@ git_repository(
     remote = "https://boringssl.googlesource.com/boringssl",
 )
 
-load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps",)
-grpc_deps()
-# Extra libraries needed for grpc
-load("@upb//bazel:workspace_deps.bzl", "upb_deps")
-upb_deps()
-load("@build_bazel_rules_apple//apple:repositories.bzl", "apple_rules_dependencies")
-apple_rules_dependencies()
-
-## Bazel (for build event protocol)
-http_archive(
-  name = "io_bazel",
-  sha256 = "f07d55500307f1dfafc47203116e36f9d3fde98423db84673a393d3975c63935",
-  strip_prefix = "bazel-98af5be784026cff466d4a4a090b60ca3255e963",
-  urls = ["https://github.com/endobson/bazel/archive/98af5be784026cff466d4a4a090b60ca3255e963.tar.gz"],
-)
-
-# abseil-cpp (2019-03-14)
+# abseil-cpp
 http_archive(
   name = "com_google_absl",
-  urls = ["https://github.com/abseil/abseil-cpp/archive/7c7754fb3ed9ffb57d35fe8658f3ba4d73a31e72.zip"],
-  strip_prefix = "abseil-cpp-7c7754fb3ed9ffb57d35fe8658f3ba4d73a31e72",
-  sha256 = "71d00d15fe6370220b6685552fb66e5814f4dd2e130f3836fc084c894943753f",
+  urls = ["https://github.com/abseil/abseil-cpp/archive/refs/tags/20211102.0.tar.gz"],
+  strip_prefix = "abseil-cpp-20211102.0",
+  sha256 = "dcf71b9cba8dc0ca9940c4b316a0c796be8fab42b070bb6b7cab62b48f0e66c4",
 )
 
 # re2 (2020-01-01)
@@ -50,3 +34,17 @@ http_archive(
   strip_prefix = "re2-9c9d64d9396af4d97e670b7828c2d770383810f4",
   urls = ["https://github.com/google/re2/archive/9c9d64d9396af4d97e670b7828c2d770383810f4.tar.gz"]
 )
+
+## Bazel (for build event protocol)
+http_archive(
+  name = "io_bazel",
+  sha256 = "f07d55500307f1dfafc47203116e36f9d3fde98423db84673a393d3975c63935",
+  strip_prefix = "bazel-98af5be784026cff466d4a4a090b60ca3255e963",
+  urls = ["https://github.com/endobson/bazel/archive/98af5be784026cff466d4a4a090b60ca3255e963.tar.gz"],
+)
+
+load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
+grpc_deps()
+
+load("@com_github_grpc_grpc//bazel:grpc_extra_deps.bzl", "grpc_extra_deps")
+grpc_extra_deps()

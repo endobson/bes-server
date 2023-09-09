@@ -4,6 +4,7 @@
 #include <string>
 #include <thread>
 
+#include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/str_replace.h"
 #include "absl/strings/str_split.h"
@@ -163,7 +164,7 @@ class ErrorFindingFinishedBuildSink : public FinishedBuildSink {
     }
   }
 
-  bool IsReady() EXCLUSIVE_LOCKS_REQUIRED(mu_) {
+  bool IsReady() ABSL_EXCLUSIVE_LOCKS_REQUIRED(mu_) {
     return stop_thread_ || !this->build_queue_.empty();
   }
 

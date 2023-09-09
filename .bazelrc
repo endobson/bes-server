@@ -1,3 +1,14 @@
-build --client_env=CC=clang
-build --copt=-DGRPC_BAZEL_BUILD
-build --action_env=GRPC_BAZEL_RUNTIME=1
+# build --client_env=CC=clang
+# build --copt=-DGRPC_BAZEL_BUILD
+# build --host_copt=-DGRPC_BAZEL_BUILD
+# build --action_env=GRPC_BAZEL_RUNTIME=1
+# common --enable_platform_specific_config
+# build --define=use_fast_cpp_protos=true
+
+# Deal with BS from upb.
+build --host_per_file_copt=external/upb@-Wno-range-loop-analysis 
+build --per_file_copt=external/upb@-Wno-range-loop-analysis
+
+# Make absl happy by using a recent c++.
+build --cxxopt=-std=c++17
+build --host_cxxopt=-std=c++17
